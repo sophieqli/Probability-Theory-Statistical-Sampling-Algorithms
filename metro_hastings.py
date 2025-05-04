@@ -25,17 +25,62 @@ class MultiGaussian:
     def sample(self):
         return self.dist.sample()
 
-#this is a technique in computational linear algebra 
+#Cholesky decomposition is a computational lin. alg technique 
 #given a covariance matrix C with Cholesky Decomp C = L@L.T
 #let x = mu + Lz
 #we sample z from the standard multi-variate Gaussian, N(0, I)
 #this transformation allows us to sample x from N(mu, C)
-
 def cholesky_decomp(X): 
     #must be a positive semidefinite matrix, entries must be REAL
     assert X.shape[0] == X.shape[1], "you need to provide a square matrix."
-    #todo 
+    n = X.shape[0]
+    L = torch.zeros((n,n))
 
+    #solve row by row (assuming i< j, then exploit symmetry)
+    #so we first solve for col 1 of L (l_00, l_10...l_n0)
+    for i in range(n):  
+        for j in range(i, n):
+            if i == j: #diagonal
+                if i == 0: L[i,i] = torch.sqrt(X[0,0])
+                else: L[i,i] = torch.sqrt(X[i,i] - X[i-1, i-1])
+            else: #off diagonal
+                #note: X_ij = known_sum + L[i,i]*L[j,i]
+                known_sum = torch.dot(L[i, :i], L[j, :i]) #is indeed 0 when i = 0 
+                L[j,i] = (X[i,j] - known_sum)/L[i,i]
+    assert torch.allclose(L @ L.T, X), "i did it wrong then oops"
+    return L
+
+#example use case: 
+X = torch.tensor([[2, 1, 0], [1, 3, 2], [0, 2, 4]], dtype=torch.float)
+L = cholesky_decomp(X)
+
+#using manually coded cholesky decomp
+class AltMultiGaussian: 
+    def __init__(self, mu: torch.Tensor, cov: torch.Tensor):
+        self.mu = mu
+        self.cov = cov
+        self.dim = mu.shape[0]
+        self.st_cov = torch.eye(len(mu)) #identity matrix 
+        self.multi_standard_dist = torch.distributions.MultivariateNormal(torch.zeros(self.dim), self.st_cov) 
+        self.L = cholesky_decomp(cov)
+
+    def sample(self): 
+        z = self.multi_standard_dist.sample()
+        return self.mu + self.L @ z
+
+#example use case: 
+mu = torch.tensor([1.0, 2.0, 3.0])
+cov = torch.tensor([
+    [4.0, 2.0, 0.0],
+    [2.0, 5.0, 1.0],
+    [0.0, 1.0, 3.0]
+])
+
+chol_gaussian = AltMultiGaussian(mu, cov)
+
+# Sample a point from N(mu, cov)
+sample = chol_gaussian.sample()
+print("Sample from N(mu, cov):", sample)
 
 def prop(mu, cov = None, sigma="id"):
     #return torch.distributions.Normal(loc=mu, scale=sigma) single variable case 
@@ -123,4 +168,5 @@ if n_dim == 2:
     plt.grid(True)
     plt.axis('equal')
     plt.show()
+
 
