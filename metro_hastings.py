@@ -26,10 +26,8 @@ class MultiGaussian:
         return self.dist.sample()
 
 #Cholesky decomposition is a computational lin. alg technique 
-#given a covariance matrix C with Cholesky Decomp C = L@L.T
-#let x = mu + Lz
-#we sample z from the standard multi-variate Gaussian, N(0, I)
-#this transformation allows us to sample x from N(mu, C)
+#given a covariance matrix C, decomposed as C = L@L.T, where L lower triangular
+#fact: any positive semidefinite matix is guaranteed a unique Cholesky Decomp
 def cholesky_decomp(X): 
     #must be a positive semidefinite matrix, entries must be REAL
     assert X.shape[0] == X.shape[1], "you need to provide a square matrix."
@@ -55,6 +53,9 @@ X = torch.tensor([[2, 1, 0], [1, 3, 2], [0, 2, 4]], dtype=torch.float)
 L = cholesky_decomp(X)
 
 #using manually coded cholesky decomp
+#let x = mu + Lz
+#we sample z from the standard multi-variate Gaussian, N(0, I)
+#this transformation allows us to sample x from N(mu, C)
 class AltMultiGaussian: 
     def __init__(self, mu: torch.Tensor, cov: torch.Tensor):
         self.mu = mu
