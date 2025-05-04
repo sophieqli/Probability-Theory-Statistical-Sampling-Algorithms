@@ -1,6 +1,7 @@
 import torch 
 import math
 
+#the distribution to sample from (known up to a constant)
 def f_distr(x):
     #possible multivariate distributions
     #return torch.exp(-0.5 * torch.dot(x, x)) -> multivariate gaussian
@@ -24,6 +25,18 @@ class MultiGaussian:
     def sample(self):
         return self.dist.sample()
 
+#this is a technique in computational linear algebra 
+#given a covariance matrix C with Cholesky Decomp C = L@L.T
+#let x = mu + Lz
+#we sample z from the standard multi-variate Gaussian, N(0, I)
+#this transformation allows us to sample x from N(mu, C)
+
+def cholesky_decomp(X): 
+    #must be a positive semidefinite matrix, entries must be REAL
+    assert X.shape[0] == X.shape[1], "you need to provide a square matrix."
+    #todo 
+
+
 def prop(mu, cov = None, sigma="id"):
     #return torch.distributions.Normal(loc=mu, scale=sigma) single variable case 
     if sigma == "id": 
@@ -35,7 +48,6 @@ def prop(mu, cov = None, sigma="id"):
 
     prop_gaussian = MultiGaussian(mu, cov)
     return prop_gaussian
-    
 
 #fixed proposal distribution (i.e. gaussian)
 def metro_hastings_fixed(n:int, f, prop, x_samp): 
@@ -69,7 +81,6 @@ def get_cov(X):
     means = torch.mean(X, dim=0)
     X = X - means
     return torch.matmul(X.T, X) / (X.shape[0] - 1)
-
 
 #adaptive gaussian mixture method
 def MH_adaptive(n:int, f, prop, x_samp):
