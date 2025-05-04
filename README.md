@@ -1,4 +1,4 @@
-# Probability-Theory-Statistical-Sampling-Algorithms
+# Probability-Theory-Statistical-Sampling-Algos
 
 I'm really interested in how probability distributions are represented/approximated and how computational linear algebra techniques play into it. I've learned about and will implement advanced sampling algorithms and perhaps find some creative applications. 
 
