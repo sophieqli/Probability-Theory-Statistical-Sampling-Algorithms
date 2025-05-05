@@ -105,7 +105,3 @@ for its in range(50, 400, 50):
     _, div = gibbs_samp_mcmc("temp", its, torch.zeros(2,3,3,), x12_joint)
     print(its, " iterations, Jensen-Shannon div: ", div)
 
-
-
-
-
