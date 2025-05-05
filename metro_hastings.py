@@ -19,7 +19,10 @@ class MultiGaussian:
         self.dist = torch.distributions.MultivariateNormal(mu, covariance_matrix=cov)
 
     def pdf(self, x:torch.Tensor):
-        density = torch.exp(-0.5*(x-mu).T @ self.cov_inv @ (x-mu))
+        #assumes x has shape 1 x d 
+        if x.dim() == 1:
+            x = x.unsqueeze(0)
+        density = torch.exp(-0.5*(x-self.mu) @ self.cov_inv @ (x-self.mu).T)
         return density/self.norm_const
 
     def sample(self):
@@ -148,6 +151,71 @@ def MH_adaptive(n:int, f, prop, x_samp):
         bern = torch.bernoulli(p_accept)
         if bern == 1: x_samp.append(x_new)
         else: x_samp.append(prev)
+
+from torch.distributions import Categorical
+class GaussianMixture: 
+    def __init__(self, mix_w:torch.Tensor, mu: torch.Tensor, cov: torch.Tensor):
+        self.mix_w = mix_w
+        self.categorical = Categorical(mix_w)
+        self.mu = um
+        self.cov = cov
+        self.N_gauss = mu.shape[0]
+        #the individ gaussians
+        self.components = [ MultiGaussian(mu[i], cov[i]) for i in range(self.N_gauss)]
+
+    def pdf(self, x):
+        tot = 0
+        for i in range(self.N_gauss):
+            tot += self.mix_w[i] * self.components[i].pdf(x)
+        return tot
+
+    def sample(): 
+        indx = self.categorical.sample() #which Gaussian to sample from 
+        return self.components[indx].sample()
+
+#more complex: we have training period, updating weight parameters of prop distr's gaussian
+#most resembles ML
+def MH_mixture_adaptive(n:int, f, x_samp, T_train = 500, T_stop = 500, T_tot = 5000, N_gauss = 2): 
+    d = x_samp.shape[1]
+
+    #init of gaussian mixture parameters
+    mu = torch.zeros((N_gauss, d))
+    S = mu.clone() #auxiliary params
+    covs = torch.zeros((N_gauss, d, d))
+    mix_w = torch.full((N_gauss), 1/float(N_gauss))
+    for i in range(n): 
+        #random init
+        random_matrix = torch.rand(d, d)
+        cov_matrix = random_matrix @ random.matrix.T #ensure symmetry 
+        covs[i] = cov_matrix
+
+    for i in range(T_tot): 
+        prev = x.samp[-1]
+        d = GaussianMixture(mix_w, mu, covs)
+        x_new = d.sample() #DOES THIS REUTRN 1 x d or just (d,)
+
+        #note, prop distr doesn't depend on the previous sample! (we use d for both)
+        pdf_new = d.pdf(torch.tensor(x_new))
+        pdf_old = d.pdf(torch.tensor(old))
+
+        p_accept = torch.min(torch.tensor(1.0), (f_distr(x_new)/f_distr(prev)) * (pdf_old / pdf_new)
+        bern = torch.bernoulli(p_accept)
+        if bern == 1: x_samp.append(x_new)
+        else: x_samp.append(prev)
+
+        #KEY addition: update parameters of proposal distr ("training step")
+        if i < T_stop: 
+            #find closest gaussian to mean 
+            #mu is n x d, x_new is 1 x d
+            t_dis = torch.sum((mu - x_new) ** 2, dim = 1, keep_dim = False)
+            j = torch.argmin(t_dis)
+
+            if x_new.dim() == 1: 
+                x_new = x_new.unsqueeze(0)
+                S = torch.cat((S, x_new), dim = 0) #row-wise
+
+####################################
+##### TESTING ######################
 
 x_samp = []
 n_dim = 2  
