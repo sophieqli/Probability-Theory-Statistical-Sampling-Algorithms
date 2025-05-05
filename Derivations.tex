@@ -1,0 +1,26 @@
+\documentclass{article}
+\usepackage{graphicx} % Required for inserting images
+
+\title{Appendix: Derivations}
+\author{Sophie Li }
+\date{May 2025}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+Hi! These are some motivations and derivations I write up as I work on my project. No definite structure to this, but I think it's important as a researcher and computer scientist to understand the theory behind what you implement. 
+
+\section{Cholesky Decomposition}
+The Cholesky decomposition is a computational linear algebra technique. I am using it in the context of sampling a d-dimensional multi-variate gaussian, whose parameters are the means (mu) and the covariance matrix. 
+
+Things get weird in the complex case. For simplicity, I'll assume the decomposition matrix $L$ is real-valued. Note, this is guaranteed when we $C$ is a symmetric positive-definite matrice (see section 3). 
+
+\section{Positive Semi-definiteness}
+As mentioned before, the Cholesky Decomposition requires a matrix that is positive semidefinite. Fortunately, the covariance matrix turns out to have this property so we don't need to check separately. 
+In this section, I first give some definitions of positive semi-definite and prove that they are equivalent. 
+\newline
+I then show that the covariance matrix is positive semi-definite (abbrev: pos semi-def). 
+
+\end{document}
