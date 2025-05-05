@@ -173,21 +173,39 @@ class GaussianMixture:
         indx = self.categorical.sample() #which Gaussian to sample from 
         return self.components[indx].sample()
 
+#Kronecker Product of two matrices
+def kron_prod(X, Y):
+    m,n = X.shape[0], X.shape[1]
+    prod = []
+    for i in range(m):
+        kron_row_i = []
+        for j in range(n):
+            kron_row_i.append(X[i,j]*Y)
+        kron_row_i = torch.cat(kron_row_i, dim = 1)
+        prod.append(kron_row_i)
+
+    prod = torch.cat(prod, dim = 0)
+    return prod
+
 #more complex: we have training period, updating weight parameters of prop distr's gaussian
 #most resembles ML
 def MH_mixture_adaptive(n:int, f, x_samp, T_train = 500, T_stop = 500, T_tot = 5000, N_gauss = 2): 
     d = x_samp.shape[1]
 
     #init of gaussian mixture parameters
-    mu = torch.zeros((N_gauss, d))
+    mu = torch.randn((N_gauss, d))
     S = mu.clone() #auxiliary params
     covs = torch.zeros((N_gauss, d, d))
     mix_w = torch.full((N_gauss), 1/float(N_gauss))
+
+    #Possibility 1: random Cov init
     for i in range(n): 
-        #random init
         random_matrix = torch.rand(d, d)
         cov_matrix = random_matrix @ random.matrix.T #ensure symmetry 
         covs[i] = cov_matrix
+
+    #Possibility 2: identity Cov init
+    #####
 
     for i in range(T_tot): 
         prev = x.samp[-1]
@@ -205,15 +223,20 @@ def MH_mixture_adaptive(n:int, f, x_samp, T_train = 500, T_stop = 500, T_tot = 5
 
         #KEY addition: update parameters of proposal distr ("training step")
         if i < T_stop: 
-            #find closest gaussian to mean 
+            #find closest gaussian to proposed sample (mean-wise) 
             #mu is n x d, x_new is 1 x d
             t_dis = torch.sum((mu - x_new) ** 2, dim = 1, keep_dim = False)
             j = torch.argmin(t_dis)
 
-            if x_new.dim() == 1: 
-                x_new = x_new.unsqueeze(0)
-                S = torch.cat((S, x_new), dim = 0) #row-wise
+            if x_new.dim() == 1: x_new = x_new.unsqueeze(0)
+            S = torch.cat((S, x_new), dim = 0) #row-wise
 
+            if i > T_train:
+              #update the j-th gaussian params
+                m_j = S.shape[0]
+                mu[j] = ((m_j-1)/m_j)*mu[j] + (1/m_j)*x_new #updating avg 
+                S_tilde =  S - mu[j]
+            
 ####################################
 ##### TESTING ######################
 
