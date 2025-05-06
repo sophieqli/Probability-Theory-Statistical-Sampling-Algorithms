@@ -1,5 +1,8 @@
 \documentclass{article}
 \usepackage{graphicx} % Required for inserting images
+\usepackage{geometry}
+\usepackage{amsmath}
+\usepackage{amssymb}
 
 \title{Appendix: Derivations}
 \author{Sophie Li }
@@ -10,12 +13,66 @@
 \maketitle
 
 \section{Introduction}
-Hi! These are some motivations and derivations I write up as I work on my project. No definite structure to this, but I think it's important as a researcher and computer scientist to understand the theory behind what you implement. 
+Hi! These are some motivations and derivations I write up as I develop on my project. No definite structure to this, but I think it's important as a mathematician and researcher to understand the theory behind what I implement in code.  
 
 \section{Cholesky Decomposition}
-The Cholesky decomposition is a computational linear algebra technique. I am using it in the context of sampling a d-dimensional multi-variate gaussian, whose parameters are the means (mu) and the covariance matrix. 
+The Cholesky decomposition is a computational linear algebra technique. 
+Let us have such a matrix $C$. We seek a lower triangular matrix $L$ such that 
+$$ C = LL^T$$
 
-Things get weird in the complex case. For simplicity, I'll assume the decomposition matrix $L$ is real-valued. Note, this is guaranteed when we $C$ is a symmetric positive-definite matrice (see section 3). 
+\noindent Things get weird when entries are complex. For simplicity, I'll assume the decomposition matrix $L$ is real-valued. Note, this is guaranteed when we $C$ is a symmetric positive-definite matrice (see section 3). \bigskip
+\subsection{Motivation on Gaussian Distributions}
+For motivation, I am using this technique in the context of sampling a $d$-dimensional multivariate Gaussian distribution, whose parameters are the mean vector $\boldsymbol{\mu} \in \mathbb{R}^d$ and the covariance matrix $C \in \mathbb{R}^{d \times d}$. 
+We seek to sample a random vector $\mathbf{X} \sim \mathcal{N}(\boldsymbol{\mu}, C)$. Doing this directly is difficult since the correlation structure can be complicated. 
+Instead, we can define a variable $\mathbf{Z}$ that follows the standard normal, $\mathbf{U} \sim \mathcal{N}(\boldsymbol{0}, \mathbf{I}_d)$. Let $L$ be the matrix resulting from the Cholesky Decomposition of $C$. It turns out, if we sample $\mathbf{U}$ and set 
+$$ \mathbf{X} = \boldsymbol{\mu} + Z\mathbf{U}$$
+then $\mathbf{X} \sim \mathcal{N}(\boldsymbol{\mu}, C)$ as desired. I believe this is actually how Pytorch does it internally. \bigskip
+\newline
+Anyways, for the actual derivation of the decomposition: 
+We have $C,L \in M_{n \times n}(R)$, with entries indexed as such: 
+$$ C = \begin{bmatrix}
+C_{0,0} & \cdots & C_{0,n-1} \\
+\vdots & \ddots & \vdots \\
+C_{n-1,0} & \cdots & C_{n-1,n-1} \\
+\end{bmatrix}, L = \begin{bmatrix}
+L_{0,0} & \cdots & L_{0,n-1} \\
+\vdots & \ddots & \vdots \\
+L_{n-1,0} & \cdots & L_{n-1,n-1} \\
+\end{bmatrix}
+$$
+
+Since $L$ is lower-triangular, any entry $l_{ij}$ with $i < j$ is 0. So we can write it as 
+$$ L = \begin{bmatrix}
+L_{0,0} & 0        & \cdots & 0 \\
+L_{1,0} & L_{1,1}  & \cdots & 0 \\
+\vdots  & \vdots   & \ddots & \vdots \\
+L_{n-1,0} & L_{n-1,1} & \cdots & L_{n-1,n-1}
+\end{bmatrix}$$
+
+Multiplying the matrices, we equate 
+$$C_{ij}  = \sum_{k = 0}^{n-1} L_{ik} L^T_{kj} = \sum_{k = 0}^{n-1} L_{ik} L_{jk} $$ 
+In other words, the $(i,j)$th entry of $C$ is just the dot product of row i and row j of matrix $L$, whose entries we must solve for. Once $k > i$, then $L_{ik} = 0$ and analogously for $j$. We re-write the above sum as 
+$$  C_{ij} = \sum_{k = 0}^{min(i,j)} L_{ik} L_{jk}$$
+Since $C^T = (LL^T)^T = (L^T)^TL^T = LL^T = C$, then $C$ is symmetric. Without loss of generality, assume $i \leq  j$. 
+\newline
+\textbf{Case 1 (Equality): $ i = j$: }
+$$C_{00} = L_{00}^2$$
+$$C_{11} = L_{00}^2+L_{11}^2$$
+$$ \cdots $$
+$$C_{(n-1),(n-1)} = \sum_{i=0}^{n-1}L_{ii}^2$$
+We easily solve, always taking the positive root, to get 
+$$ L_{00} = \sqrt{C_{00}}$$
+$$ L_{11} = \sqrt{C_{11} - C_{00}}$$
+$$ \cdots $$
+$$ L_{kk} = \sqrt{C_{kk} - C_{(k-1),(k-1)}}$$
+This initializes all $n$ diagonal entries of $L$. 
+\newline
+\textbf{Case 2 (Strict Inequality): $ i < j$ }
+$$ C_{ij} = \sum_{k = 0}^{i} L_{ik} L_{jk} = \sum_{k=0}^{i-1}L_{ik} L_{jk} + L_{ii}L_{ji}$$
+We isolate for $L_{ji}$:  
+$$ L_{ji} = \frac{1}{L_{ii}}(C_{ij} - \sum_{k=1}^{i-1}L_{ik} L_{jk})$$
+This expresses $L_{ji}$ in terms of $C_{i,j}$ and entries $L_{km}$, where $k \leq j, m \leq i$. Therefore, we want to express this 
+\newline
 
 \section{Positive Semi-definiteness}
 As mentioned before, the Cholesky Decomposition requires a matrix that is positive semidefinite. Fortunately, the covariance matrix turns out to have this property so we don't need to check separately. 
