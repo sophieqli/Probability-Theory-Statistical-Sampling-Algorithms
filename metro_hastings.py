@@ -194,10 +194,11 @@ def MH_mixture_adaptive(n:int, f, x_samp, T_train = 500, T_stop = 500, T_tot = 5
 
     #init of gaussian mixture parameters
     mu = torch.randn((N_gauss, d))
-    S = mu.clone() #auxiliary params
+    S = [mu[i].unsqueeze(0) for i in range(N_gauss)]
     covs = torch.zeros((N_gauss, d, d))
     mix_w = torch.full((N_gauss), 1/float(N_gauss))
 
+    #Two initializations (empirically, it seems __ works better)
     #Possibility 1: random Cov init
     for i in range(n): 
         random_matrix = torch.rand(d, d)
@@ -209,12 +210,12 @@ def MH_mixture_adaptive(n:int, f, x_samp, T_train = 500, T_stop = 500, T_tot = 5
 
     for i in range(T_tot): 
         prev = x.samp[-1]
-        d = GaussianMixture(mix_w, mu, covs)
-        x_new = d.sample() #DOES THIS REUTRN 1 x d or just (d,)
+        d_prop = GaussianMixture(mix_w, mu, covs)
+        x_new = d_prop.sample() #DOES THIS REUTRN 1 x d or just (d,)
 
         #note, prop distr doesn't depend on the previous sample! (we use d for both)
-        pdf_new = d.pdf(torch.tensor(x_new))
-        pdf_old = d.pdf(torch.tensor(old))
+        pdf_new = d_prop.pdf(torch.tensor(x_new))
+        pdf_old = d_prop.pdf(torch.tensor(old))
 
         p_accept = torch.min(torch.tensor(1.0), (f_distr(x_new)/f_distr(prev)) * (pdf_old / pdf_new)
         bern = torch.bernoulli(p_accept)
@@ -229,14 +230,21 @@ def MH_mixture_adaptive(n:int, f, x_samp, T_train = 500, T_stop = 500, T_tot = 5
             j = torch.argmin(t_dis)
 
             if x_new.dim() == 1: x_new = x_new.unsqueeze(0)
-            S = torch.cat((S, x_new), dim = 0) #row-wise
+            S[j] = torch.cat((S[j], x_new), dim = 0) #row-wise
 
             if i > T_train:
               #update the j-th gaussian params
-                m_j = S.shape[0]
+                m_j = S[j].shape[0]
                 mu[j] = ((m_j-1)/m_j)*mu[j] + (1/m_j)*x_new #updating avg 
-                S_tilde =  S - mu[j]
-            
+                S_tilde = S[j] - mu[j]
+                EPS = 1e-4
+                covs[j] = ((S_tilde.T @ S_tilde) + (m_j -1)*EPS*torch.eye(d))/(m_j-1) #jth Cov-mat
+
+                #re-adjust weights on # entries in the S[i]
+                ents = [S[i].shape[0] for i in range(N_gauss)]
+                tot_ents = sum(ents)
+                for i in range(N_gauss): mix_w[i] = ents[i]/tot_ents
+
 ####################################
 ##### TESTING ######################
 
