@@ -189,61 +189,61 @@ def kron_prod(X, Y):
 
 #more complex: we have training period, updating weight parameters of prop distr's gaussian
 #most resembles ML
-def MH_mixture_adaptive(n:int, f, x_samp, T_train = 500, T_stop = 500, T_tot = 5000, N_gauss = 2): 
-    d = x_samp.shape[1]
-
-    #init of gaussian mixture parameters
-    mu = torch.randn((N_gauss, d))
+def MH_mixture_adaptive(d, f, x_samp, T_train = 500, T_stop = 500, T_tot = 5000, N_gauss = 2):
+    # init of gaussian mixture parameters
+    #mu = torch.randn((N_gauss, d))
+    mu = torch.full((N_gauss, d), torch.distributions.Uniform(-4, 4).sample())
     S = [mu[i].unsqueeze(0) for i in range(N_gauss)]
     covs = torch.zeros((N_gauss, d, d))
-    mix_w = torch.full((N_gauss), 1/float(N_gauss))
+    mix_w = torch.full((N_gauss,), 1/float(N_gauss))
 
-    #Two initializations (empirically, it seems __ works better)
-    #Possibility 1: random Cov init
-    for i in range(n): 
+    #emprically, random cov init works POORLY while the identity works well
+    # Possibility 1: random Cov init
+    for i in range(N_gauss):
         random_matrix = torch.rand(d, d)
-        cov_matrix = random_matrix @ random.matrix.T #ensure symmetry 
+        cov_matrix = random_matrix @ random_matrix.T  # ensure symmetry
         covs[i] = cov_matrix
 
-    #Possibility 2: identity Cov init
-    #####
+    # Possibility 2: Identity matrix, large variance for exploration
+    for i in range(N_gauss):
+        covs[i] = 10*torch.eye(d)
 
-    for i in range(T_tot): 
-        prev = x.samp[-1]
+    for i in range(T_tot):
+        prev = x_samp[-1]
         d_prop = GaussianMixture(mix_w, mu, covs)
-        x_new = d_prop.sample() #DOES THIS REUTRN 1 x d or just (d,)
+        x_new = d_prop.sample()  # shape should be (1, d)
 
-        #note, prop distr doesn't depend on the previous sample! (we use d for both)
-        pdf_new = d_prop.pdf(torch.tensor(x_new))
-        pdf_old = d_prop.pdf(torch.tensor(old))
-
-        p_accept = torch.min(torch.tensor(1.0), (f_distr(x_new)/f_distr(prev)) * (pdf_old / pdf_new)
+        # Compute acceptance probability
+        pdf_new = d_prop.pdf(x_new.clone().detach())
+        pdf_old = d_prop.pdf(prev.clone().detach())
+        p_accept = torch.min(torch.tensor(1.0), (f(x_new)/f(prev)) * (pdf_old / pdf_new))
         bern = torch.bernoulli(p_accept)
-        if bern == 1: x_samp.append(x_new)
-        else: x_samp.append(prev)
+        if bern == 1:
+            x_samp.append(x_new)
+        else:
+            x_samp.append(prev)
 
-        #KEY addition: update parameters of proposal distr ("training step")
-        if i < T_stop: 
-            #find closest gaussian to proposed sample (mean-wise) 
-            #mu is n x d, x_new is 1 x d
-            t_dis = torch.sum((mu - x_new) ** 2, dim = 1, keep_dim = False)
+        # Update proposal parameters
+        if i < T_stop:
+            t_dis = torch.sum((mu - x_new) ** 2, dim=1)
             j = torch.argmin(t_dis)
 
-            if x_new.dim() == 1: x_new = x_new.unsqueeze(0)
-            S[j] = torch.cat((S[j], x_new), dim = 0) #row-wise
+            if x_new.dim() == 1:
+                x_new = x_new.unsqueeze(0)
+            S[j] = torch.cat((S[j], x_new), dim=0)  # row-wise
 
             if i > T_train:
-              #update the j-th gaussian params
                 m_j = S[j].shape[0]
-                mu[j] = ((m_j-1)/m_j)*mu[j] + (1/m_j)*x_new #updating avg 
+                mu[j] = ((m_j-1)/m_j)*mu[j] + (1/m_j)*x_new.squeeze(0)  # update mean
                 S_tilde = S[j] - mu[j]
                 EPS = 1e-4
-                covs[j] = ((S_tilde.T @ S_tilde) + (m_j -1)*EPS*torch.eye(d))/(m_j-1) #jth Cov-mat
+                covs[j] = ((S_tilde.T @ S_tilde) + (m_j - 1)*EPS*torch.eye(d))/(m_j - 1)
 
-                #re-adjust weights on # entries in the S[i]
+                # Update weights
                 ents = [S[i].shape[0] for i in range(N_gauss)]
                 tot_ents = sum(ents)
-                for i in range(N_gauss): mix_w[i] = ents[i]/tot_ents
+                for i in range(N_gauss):
+                    mix_w[i] = ents[i] / tot_ents
 
 ####################################
 ##### TESTING ######################
@@ -252,7 +252,7 @@ x_samp = []
 n_dim = 2  
 #metro_hastings_fixed(n_dim, f_distr, prop, x_samp)
 
-#works WAYYY Better (try the visualization)
+##### Adaptive Model -> works WAYYY Better (try the visualization)
 MH_adaptive(n_dim, f_distr, prop, x_samp) 
 
 burn_in = 500
@@ -270,3 +270,57 @@ if n_dim == 2:
     plt.show()
 
 
+###### Adaptive Gaussian MIXTURE model 
+def target_density(x):
+    if x.dim() == 1:
+        x = x.unsqueeze(1)
+    return torch.exp(-((x**2 - 4)**2)/4).squeeze()
+
+torch.manual_seed(42)
+N = 2
+mu_init = torch.tensor([
+    np.random.uniform(-4, 0),
+    np.random.uniform(0, 4)
+], dtype=torch.float32)
+
+covs_init = torch.tensor([10.0, 10.0])
+weights_init = torch.tensor([0.5, 0.5])
+
+
+# Initial sample point x0 ~ N(0, 1)
+x0 = torch.normal(0.0, 1.0, size=(1,))  # shape: [1]
+x_samp = [x0]
+
+MH_mixture_adaptive(
+    d=1,
+    f=target_density,
+    x_samp=x_samp,
+    T_train=0,
+    T_stop=0,
+    T_tot=5000,
+    N_gauss=2)
+
+samples = torch.stack(x_samp, dim=0)
+# Histogram
+plt.hist(samples, bins=100, density=True, alpha=0.6, label='MH samples')
+xs = torch.linspace(-4, 4, 1000)
+with torch.no_grad():
+    ys = target_density(xs)
+    ys = ys / torch.trapz(ys, xs)  
+plt.plot(xs.numpy(), ys.numpy(), 'r--', label='Target density')
+plt.title("AGM-MH Sampling: Bimodal Univariate Example")
+plt.xlabel("x")
+plt.ylabel("Density")
+plt.legend()
+plt.grid(True)
+plt.show()
+
+
+#Variations to test: 
+#How initialization affects the sampling
+#Train, Stop periods 
+#Why random covaraince init works worse than identity 
+    #how large vs small variance affects it
+# N_gaussians parameter 
+
+#Test performance of 3 sampling methods 
