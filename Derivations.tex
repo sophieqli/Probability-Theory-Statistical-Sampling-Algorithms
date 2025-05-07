@@ -3,10 +3,12 @@
 \usepackage{geometry}
 \usepackage{amsmath}
 \usepackage{amssymb}
+\usepackage{amsthm}
 
 \title{Appendix: Derivations}
 \author{Sophie Li }
 \date{May 2025}
+\newtheorem{theorem}{Theorem}[section]
 
 \begin{document}
 
@@ -38,7 +40,7 @@ L_{1,0} & L_{1,1}  & \cdots & 0 \\
 L_{n-1,0} & L_{n-1,1} & \cdots & L_{n-1,n-1}
 \end{bmatrix}$$
 
-\noindent Things get weird when entries are complex. For simplicity, I'll assume the decomposition matrix $L$ is real-valued. Note, this is guaranteed when we $C$ is a symmetric positive-definite matrice (see section 3). \bigskip
+\noindent Things get weird when entries are complex. For simplicity, I'll assume the decomposition matrix $L$ is real-valued. Note, this is guaranteed when $C$ is a symmetric positive-definite matrix (see section 3). \bigskip
 \subsection{Motivation on Gaussian Distributions}
 For motivation, I am using this technique in the context of sampling a $d$-dimensional multivariate Gaussian distribution, whose parameters are the mean vector $\boldsymbol{\mu} \in \mathbb{R}^d$ and the covariance matrix $C \in \mathbb{R}^{d \times d}$. 
 We seek to sample a random vector $\mathbf{X} \sim \mathcal{N}(\boldsymbol{\mu}, C)$. Doing this directly is difficult since the correlation structure can be complicated. 
@@ -74,10 +76,10 @@ $$  C_{ij} = \sum_{k = 0}^{min(i,j)} L_{ik} L_{jk}$$
 Here, we assumed $i \leq j$ so indeed, 
 $$  C_{ij} = \sum_{k = 0}^{i} L_{ik} L_{jk} = Cov(X_i, X_j)$$
 proving that the covariance matrix is indeed correct! 
-This shows that in the multi-variate case, any Gaussian can be reduced to sampling from the standard form. \bigskip
+This shows that in the multivariate case, any Gaussian can be reduced to sampling from the standard form. \bigskip
 \newline
-The takeaway here is that intuitively, the $L$ matrix makes the matrix multiplication work in really similar way that Covariance "splits" across terms. Therefore the structure is preserved. 
-The explicit density function can be written as such (but it's really nasty): 
+The takeaway here is that intuitively, the $L$ matrix makes matrix multiplication work in a way very similar to that of Covariance "splits" across terms. Therefore the structure is preserved. 
+The explicit density function can be written as such (but it is really nasty):
 $$ \frac{1}{(2\pi)^{d/2}} (\det C)^{-1/2} \exp \{ -(1/2)(\mathbf{x}-\boldsymbol{\mu})C^{-1}(\mathbf{x}-\boldsymbol{\mu})^T \}$$
 
 \bigskip
@@ -108,9 +110,49 @@ We go row by row.
 First, we set $L_{00} = \sqrt{C_{00}}$. Then, we can set $L_{10}, L_{11}$ using the formula above. $L_{10}$ only relies on $L_{00}$, and then once we get that value, $L_{11}$ only relies on $L_{00}, L_{10}$. We go to the next row, and so forth, until the last entry we solve is $L_{(n-1), (n-1)}$ giving us the entire $L$ matrix! 
 
 \section{Positive Semi-definiteness}
-As mentioned before, the Cholesky Decomposition requires a matrix that is positive semidefinite. Fortunately, the covariance matrix turns out to have this property so we don't need to check separately. 
-In this section, I first give some definitions of positive semi-definite and prove that they are equivalent. 
+\subsection{Remarks}
+As mentioned before, the Cholesky Decomposition requires a matrix that is positive semidefinite. Fortunately, the covariance matrix turns out to have this property so we don't need to check separately. I first lay out some definitions of positive semi-definite and prove that they are equivalent, from which it follows that the covariance matrix (of the form $XX^T$) must be positive semi-definite (abbrev: PSD). 
 \newline
-I then show that the covariance matrix is positive semi-definite (abbrev: pos semi-def). 
+Again, for my purposes, the complex case isn't too relevant so I'll focus on proving core results over $\mathbb{R}$ without worrying about doing so in full generality. 
+\noindent We will culminate in the Spectral Theorem for Singular Value Decomposition. 
+
+\begin{theorem}
+Let a symmetric $n \times n$ matrix $A$ be positive semi-definite. Then, the following definitions are equivalent characterizations. 
+\begin{enumerate}
+    \item $ \forall x \in \mathbb{R}^n, x^TAx \geq 0$
+    \item All eigenvalues $\lambda_i$ of $A$ are non-negative
+    \item There exists a matrix $B$ such that $A = B^TB$
+    \item There exists a lower triangular matrix $L$ such that $A = LL^T$
+\end{enumerate}
+\end{theorem}
+
+\noindent Quick justification on why we're restricting $A$ to a symmetric matrix. Generally, they're easier to work with and. Definitions (3) and (4) only apply to symmetric matrices. Also, each matrix $A$ can be represented uniquely as the sum of a symmetric and skew-symmetric matrix where $A = B + B'$, with $B = \frac{A+A^T}{2}$ being symmetric and $B' = \frac{A-A^T}{2}$ being skew symmetric. The quadratic form equals 
+$$ x^TAx = x^TBx + x^TB'x$$
+where one can verify that $x^TB'x$ is 0 due to $B'$ being skew symmetric. So, this shows for each matrix, only the symmetric part determines the quadratic form. 
+
+\begin{proof}
+    First, we show 1 and 2 are equivalent. Assume 1 holds. For the sake of contradiction, assume there exists a negative eigenvalue $\lambda_i$ corresponding to eigenvector $v_i$. Then, $$v_i^TAv_i = v_i^T(\lambda_iv_i) = \lambda_i \langle v_i, v_i\rangle = \lambda_i|v_i|^2 < 0$$
+    This contradicts our quadratic form assumption, so all eigenvalues must be non-negative. \bigskip
+    \newline
+    For the backwards direction, assume 2 holds. The standard proof involves the Spectral Theorem for Symmetric Matrices. But first, we must state one fact. Each symmetric matrix $A$ has an orthonormal eigenbasis (pairwise orthogonal, unit length). 
+    \newline
+    \noindent I will give a partial justification (for the orthogonal part only). Suppose we have $v_1, v_2$ in the eigenbasis with corresponding $\lambda_1, \lambda_2$. If $\lambda_1 = \lambda_2$, then we can guarantee that $v_1, v_2$ are orthogonal since every subspace (here, $ker(A-\lambda_1 I)$) has a basis, which can be turned into an orthogonal basis via the Gram-Schmidt process. 
+    Now, suppose $\lambda_1 \neq \lambda_2$, then 
+    $$ \lambda_1v_1^Tv_2 = (\lambda v_1)^Tv_2 = (Av_1)^Tv_2 = v_1^TA^Tv_2$$
+    Since $A$ is symmetric, $A = A^T$ so this becomes $v_1^TAv_2 = \lambda_2v_1^Tv_2$
+    Since $\lambda_1v_1^Tv_2 = \lambda_2v_1^Tv_2$ for distinct lambdas, then $v_1^Tv_2 = 0$ as desired. It is a little more work to count the dimensions of each eigenspace and show they indeed form a basis. I'll revisit later if I have time. 
+    Onto the Spectral theorem! 
+    
+    \begin{theorem}
+        Let $A$ be an $n \times n$ symmetric matrix. Then, $A$ is diagonalizable as 
+        $A = PDP^{-1} = PDP^T$, where $P$ is an orthonormal matrix and $D$ is a diagonal matrix.  
+    \end{theorem}
+    
+
+    
+    
+\end{proof}
+    
+
 
 \end{document}
