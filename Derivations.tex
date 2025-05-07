@@ -15,7 +15,7 @@
 \maketitle
 
 \section{Introduction}
-Hi! These are some motivations and derivations I write up as I develop on my project. No definite structure to this, but I think it's important as a mathematician and researcher to understand the theory behind what I implement in code.  
+Hi! These are some motivations and derivations I write up as I develop on my project. No definite structure to this, but I think it's important as a mathematician and researcher to understand the theory behind what I implement in code (although some of this is just interesting theory I randomly discover along the way). 
 
 \section{Cholesky Decomposition}
 The Cholesky decomposition is a computational linear algebra technique. 
@@ -131,7 +131,9 @@ $$ x^TAx = x^TBx + x^TB'x$$
 where one can verify that $x^TB'x$ is 0 due to $B'$ being skew symmetric. So, this shows for each matrix, only the symmetric part determines the quadratic form. 
 
 \begin{proof}
-    First, we show 1 and 2 are equivalent. Assume 1 holds. For the sake of contradiction, assume there exists a negative eigenvalue $\lambda_i$ corresponding to eigenvector $v_i$. Then, $$v_i^TAv_i = v_i^T(\lambda_iv_i) = \lambda_i \langle v_i, v_i\rangle = \lambda_i|v_i|^2 < 0$$
+    In this proof, we only show that definition 1 and 2 are equivalent. \bigskip
+    \newline
+    Assume 1 holds. For the sake of contradiction, assume there exists a negative eigenvalue $\lambda_i$ corresponding to eigenvector $v_i$. Then, $$v_i^TAv_i = v_i^T(\lambda_iv_i) = \lambda_i \langle v_i, v_i\rangle = \lambda_i|v_i|^2 < 0$$
     This contradicts our quadratic form assumption, so all eigenvalues must be non-negative. \bigskip
     \newline
     For the backwards direction, assume 2 holds. The standard proof involves the Spectral Theorem for Symmetric Matrices. But first, we must state one fact. Each symmetric matrix $A$ has an orthonormal eigenbasis (pairwise orthogonal, unit length). 
@@ -140,19 +142,52 @@ where one can verify that $x^TB'x$ is 0 due to $B'$ being skew symmetric. So, th
     Now, suppose $\lambda_1 \neq \lambda_2$, then 
     $$ \lambda_1v_1^Tv_2 = (\lambda v_1)^Tv_2 = (Av_1)^Tv_2 = v_1^TA^Tv_2$$
     Since $A$ is symmetric, $A = A^T$ so this becomes $v_1^TAv_2 = \lambda_2v_1^Tv_2$
-    Since $\lambda_1v_1^Tv_2 = \lambda_2v_1^Tv_2$ for distinct lambdas, then $v_1^Tv_2 = 0$ as desired. It is a little more work to count the dimensions of each eigenspace and show they indeed form a basis. I'll revisit later if I have time. 
+    Since $\lambda_1v_1^Tv_2 = \lambda_2v_1^Tv_2$ for distinct lambdas, then $v_1^Tv_2 = 0$ as desired. It is a little more work to count the dimensions of each eigenspace  and show they indeed form a basis. (must show each eigenvalue's algebraic multiplicity, in the characteristic polynomial, is equal to the geometric multiplicity, the dimension of the eigenspace, too much work right now). I'll revisit later if I have time. 
     Onto the Spectral theorem! 
     
     \begin{theorem}
         Let $A$ be an $n \times n$ symmetric matrix. Then, $A$ is diagonalizable as 
         $A = PDP^{-1} = PDP^T$, where $P$ is an orthonormal matrix and $D$ is a diagonal matrix.  
     \end{theorem}
-    
+    \noindent (Recall I am not proving this, but rather using it in service of proving definition 2 implies definition 1 of PSD.)
 
-    
+    Proof to be inserted here. 
     
 \end{proof}
-    
 
+    From the Spectral Theorem, we can uncover a beautiful property of the matrix. The Cayley-Hamilton Theorem states the following: 
+    \begin{theorem}
+        Let $A$ be a square $n \times n$ matrix with a geometric polynomial $p_A(\lambda) = \det(A - \lambda I)$. Then, $A$ is a root of the $p_A$. 
+    \end{theorem}
+
+    \begin{proof}
+        Based on how determinants are calculated (omitted here), the characteristic polynomial must have degree $n$. Let $p_A(\lambda) = c_n\lambda^n + c_{n-1}\lambda^{n-1} + ... + c_0$. We seek to compute $$p_A(A) = c_nA^n + ... + c_1A + c_0I$$
+
+        \noindent By the Spectral Theorem, we have $A = PDP^{-1}$, so the matrix powers are $A^k = PD^kP^{-1}$. Substituting in, we get 
+        $$ p_A(A) = P(c_nD^n)P^{-1} + P(c_{n-1}D^{n-1})P^{-1} + ... + P(c_1D)P^{-1} + c_0I$$
+        We re-write $c_0I = P(c_0I)P^{-1}$ and factor: 
+        $$ = P(c_nD^n + c_{n-1}D^{n-1} + ... + c_1D+c_0I)P^{-1}$$
+
+        \noindent We realize 
+        $$ D = \begin{bmatrix}
+\lambda_1 & 0        & \cdots & 0 \\
+0 & \lambda_2  & \cdots & 0 \\
+\vdots  & \vdots   & \ddots & \vdots \\
+0 & 0 & \cdots & \lambda_n
+\end{bmatrix}$$
+        Exponentiating $D$ and merging the constants, the above expression equals 
+        $$ P\begin{bmatrix}
+\sum_{i=0}^{n} c_i\lambda_1^i & 0        & \cdots & 0 \\
+0 & \sum_{i=0}^{n} c_i\lambda_2^i  & \cdots & 0 \\
+\vdots  & \vdots   & \ddots & \vdots \\
+0 & 0 & \cdots & \sum_{i=0}^{n} c_i\lambda_n^i
+\end{bmatrix} P^{-1}$$
+
+        The center matrix equals $0$ since $\lambda_1,...,\lambda_n$ are eigenvalues, thus roots of $p_A$. This proves that $P_A(A) = 0_n$, the 0 matrix! 
+    \end{proof}
+
+    \noindent Not only is this a nice theoretical result, but also a neat tool when we want to simplify matrix exponentiation. New section! 
+
+    \subsection{Applications in Stochastic Matrices and Markov Chains}
 
 \end{document}
