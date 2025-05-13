@@ -189,6 +189,7 @@ def kron_prod(X, Y):
 
 #more complex: we have training period, updating weight parameters of prop distr's gaussian
 #most resembles ML
+#paper: https://arxiv.org/pdf/1212.0122
 def MH_mixture_adaptive(d, f, x_samp, T_train = 500, T_stop = 500, T_tot = 5000, N_gauss = 2):
     # init of gaussian mixture parameters
     #mu = torch.randn((N_gauss, d))
@@ -228,8 +229,7 @@ def MH_mixture_adaptive(d, f, x_samp, T_train = 500, T_stop = 500, T_tot = 5000,
             t_dis = torch.sum((mu - x_new) ** 2, dim=1)
             j = torch.argmin(t_dis)
 
-            if x_new.dim() == 1:
-                x_new = x_new.unsqueeze(0)
+            if x_new.dim() == 1: x_new = x_new.unsqueeze(0)
             S[j] = torch.cat((S[j], x_new), dim=0)  # row-wise
 
             if i > T_train:
@@ -286,7 +286,6 @@ mu_init = torch.tensor([
 covs_init = torch.tensor([10.0, 10.0])
 weights_init = torch.tensor([0.5, 0.5])
 
-
 # Initial sample point x0 ~ N(0, 1)
 x0 = torch.normal(0.0, 1.0, size=(1,))  # shape: [1]
 x_samp = [x0]
@@ -314,7 +313,6 @@ plt.ylabel("Density")
 plt.legend()
 plt.grid(True)
 plt.show()
-
 
 #Variations to test: 
 #How initialization affects the sampling
